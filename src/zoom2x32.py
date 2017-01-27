@@ -9,6 +9,8 @@ from rtmidi.midiutil import open_midiport
 
 client_name = "zoom2x32"
 zoom_channel_offset = 224
+buttonArray = [0, 0, 0, 0, 0, 0, 0, 0]
+reverbArray = [0, 0, 0, 0, 0, 0, 0, 0]
 
 midiout = rtmidi.MidiOut(name=client_name)
 midiout.open_virtual_port("out")
@@ -18,12 +20,41 @@ logging.basicConfig(level=logging.DEBUG)
 
 def midiSolver(message):
   print(message)
-  if 224 <= message[0] < 234:
+  #faders
+  if zoom_channel_offset <= message[0] < zoom_channel_offset + 9:
       channel = message[0]-zoom_channel_offset
       if (channel == 8):
         channel = 70
-      print("176", channel, message[2])
+      #print("176", channel, message[2])
       midiout.send_message([176,channel,message[2]])
+  #buttons => select reverb channel
+  elif message[0] == 144:
+      if message[2] == 127:
+          buttonArray[message[1]-8] = 1
+      else:
+          buttonArray[message[1]-8] = 0
+      print(buttonArray)
+  #rotator => add reverb by +5
+  if message[0] == 176:
+      if message[2] == 1:
+          print("gore")
+          for e,i in enumerate(buttonArray):
+              if (i == 1):
+                  if(reverbArray[e] < 122):
+                      reverbArray[e] += 5
+                  else:
+                      reverbArray[e] = 127
+                  midiout.send_message([176, e+8, reverbArray[e]])
+      elif message[2] == 65:
+          print("dole")
+          for e,i in enumerate(buttonArray):
+              if (i == 1):
+                  if (reverbArray[e] > 5):
+                    reverbArray[e] -= 5
+                  else:
+                    reverbArray[e] = 0
+                  midiout.send_message([176, e+8, reverbArray[e]])
+      print(reverbArray)
 
 class MidiInputHandler(object):
     def __init__(self, port):
